@@ -37,7 +37,7 @@ def get_kawasan_konservasi_from_arcgis():
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
 
-st.title("Konversi Koordinat dan Cek Kawasan Konservasi")
+st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
 format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-DD"))
 
@@ -46,12 +46,10 @@ if format_pilihan == "OSS-UTM":
 else:
     st.write("Format General-DD dipilih. Kolom: `id`, `x`, `y`")
 
-# Urutan pilihan shapefile diubah: Poligon dulu, baru Titik
-shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
-
 uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
+shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)", "Poligon (Polygon)"))
 
-nama_file = st.text_input("Masukkan nama file shapefile (tanpa ekstensi)", value="koordinat_shapefile")
+nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
 
 try:
     konservasi_gdf = get_kawasan_konservasi_from_arcgis()
@@ -73,7 +71,24 @@ if uploaded_file and nama_file:
     else:
         df.rename(columns={'x': 'longitude', 'y': 'latitude'}, inplace=True)
 
-    if shp_type == "Poligon (Polygon)":
+    # Buat GeoDataFrame
+    if shp_type == "Titik (Point)":
+        geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
+        gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
+
+        if konservasi_gdf is not None:
+            # Spatial join untuk menambahkan atribut 'namobj' kawasan konservasi ke tiap titik jika ada
+            joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
+            points_in_konservasi = joined[~joined['namobj'].isna()]
+
+            if not points_in_konservasi.empty:
+                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
+                st.subheader("Detail Kawasan Konservasi untuk Titik")
+                st.dataframe(points_in_konservasi[['id', 'namobj']])
+            else:
+                st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
+
+    else:
         coords = list(zip(df['longitude'], df['latitude']))
         if coords[0] != coords[-1]:
             coords.append(coords[0])
@@ -83,26 +98,11 @@ if uploaded_file and nama_file:
         if konservasi_gdf is not None:
             overlay_result = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
             if not overlay_result.empty:
-                st.success("Poligon berada di dalam Kawasan Konservasi 🏞️")
+                st.success("Poligon berada di dalam Kawasan Konservasi ⚠️⚠️")
                 st.subheader("Detail Kawasan Konservasi yang bersinggungan dengan Poligon")
                 st.dataframe(overlay_result[['id', 'namobj']])
             else:
-                st.info("Poligon tidak berada di kawasan konservasi 📍")
-
-    else:  # Titik (Point)
-        geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
-        gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
-
-        if konservasi_gdf is not None:
-            joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
-            points_in_konservasi = joined[~joined['namobj'].isna()]
-
-            if not points_in_konservasi.empty:
-                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi 🏞️")
-                st.subheader("Detail Kawasan Konservasi untuk Titik")
-                st.dataframe(points_in_konservasi[['id', 'namobj']])
-            else:
-                st.info("Tidak ada titik yang berada di kawasan konservasi 📍")
+                st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
