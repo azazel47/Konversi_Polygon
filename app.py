@@ -17,7 +17,7 @@ def dms_to_dd(degree, minute, second, direction):
 
 @st.cache_data
 def download_and_extract_shapefile():
-    url = "https://drive.google.com/uc?export=download&id=1VbpLlczAT0GmsCM4UKtBsD0hFvJmB8t4"
+    url = "https://drive.google.com/uc?export=download&id=1ojHKKSFia2Wdh9rrMJTI5yjL2oXidjeY"
     r = requests.get(url)
     z = zipfile.ZipFile(BytesIO(r.content))
     extract_path = "kawasan_konservasi"
