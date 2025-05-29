@@ -17,7 +17,7 @@ def dms_to_dd(degree, minute, second, direction):
 
 @st.cache_data
 def get_kawasan_konservasi_from_arcgis():
-    url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
+    url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35"
     params = {
         "where": "1=1",
         "outFields": "*",
