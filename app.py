@@ -82,11 +82,11 @@ if uploaded_file and nama_file:
             points_in_konservasi = joined[~joined['namobj'].isna()]
 
             if not points_in_konservasi.empty:
-                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi 🏞️")
+                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
                 st.subheader("Detail Kawasan Konservasi untuk Titik")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
-                st.info("Tidak ada titik yang berada di kawasan konservasi 📍")
+                st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
     else:
         coords = list(zip(df['longitude'], df['latitude']))
