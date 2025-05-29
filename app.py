@@ -16,17 +16,22 @@ def dms_to_dd(degree, minute, second, direction):
     return dd
 
 @st.cache_data
-def download_and_extract_shapefile():
-    url = "https://drive.usercontent.google.com/download?id=1ojHKKSFia2Wdh9rrMJTI5yjL2oXidjeY&export=download&confirm=t&uuid=e8e5606e-d88e-460d-812d-8079c5b68ee5"
-    r = requests.get(url)
-    z = zipfile.ZipFile(BytesIO(r.content))
-    extract_path = "kawasan_konservasi"
-    z.extractall(extract_path)
-    return extract_path
+def get_kawasan_konservasi_from_arcgis():
+    url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "f": "geojson"
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return gpd.read_file(BytesIO(response.content))
+    else:
+        return None
 
-st.title("Konversi Koordinat Perizinan I")
+st.title("Konversi Koordinat dan Cek Kawasan Konservasi")
 
-format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-Decimal Degree"))
+format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-DD"))
 
 if format_pilihan == "OSS-UTM":
     st.write("Format OSS-UTM dipilih. Kolom: `id`, `bujur_derajat`, `bujur_menit`, `bujur_detik`, `BT_BB`, `lintang_derajat`, `lintang_menit`, `lintang_detik`, `LU_LS`")
@@ -39,17 +44,12 @@ shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)",
 nama_file = st.text_input("Masukkan nama file shapefile (tanpa ekstensi)", value="koordinat_shapefile")
 
 try:
-    konservasi_path = download_and_extract_shapefile()
-    konservasi_gdf = None
-    for file in os.listdir(konservasi_path):
-        if file.endswith(".shp"):
-            konservasi_gdf = gpd.read_file(os.path.join(konservasi_path, file))
-            break
+    konservasi_gdf = get_kawasan_konservasi_from_arcgis()
     if konservasi_gdf is None:
-        st.warning("File .shp tidak ditemukan dalam ZIP kawasan konservasi.")
+        st.warning("Gagal memuat kawasan konservasi dari ArcGIS Server.")
 except Exception as e:
     konservasi_gdf = None
-    st.warning(f"Gagal memuat file kawasan konservasi: {e}")
+    st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
