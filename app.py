@@ -15,6 +15,9 @@ def dms_to_dd(degree, minute, second, direction):
         dd *= -1
     return dd
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 @st.cache_data
 def get_kawasan_konservasi_from_arcgis():
     url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
@@ -23,16 +26,16 @@ def get_kawasan_konservasi_from_arcgis():
         "outFields": "*",
         "f": "geojson"
     }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        try:
+    try:
+        response = requests.get(url, params=params, verify=False)
+        if response.status_code == 200:
             gdf = gpd.read_file(BytesIO(response.content))
             return gdf
-        except Exception as e:
-            st.warning(f"Gagal mengonversi data geojson: {e}")
+        else:
+            st.warning(f"Gagal mengunduh data: status code {response.status_code}")
             return None
-    else:
-        st.warning(f"Gagal mengunduh data: status code {response.status_code}")
+    except Exception as e:
+        st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
 
 st.title("Konversi Koordinat dan Cek Kawasan Konservasi")
