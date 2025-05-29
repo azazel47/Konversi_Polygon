@@ -17,16 +17,16 @@ def dms_to_dd(degree, minute, second, direction):
 
 @st.cache_data
 def download_and_extract_shapefile():
-    url = "https://drive.google.com/uc?export=download&id=1VbpLlczAT0GmsCM4UKtBsD0hFvJmB8t4"
+    url = "https://drive.usercontent.google.com/download?id=1ojHKKSFia2Wdh9rrMJTI5yjL2oXidjeY&export=download&confirm=t&uuid=e8e5606e-d88e-460d-812d-8079c5b68ee5"
     r = requests.get(url)
     z = zipfile.ZipFile(BytesIO(r.content))
     extract_path = "kawasan_konservasi"
     z.extractall(extract_path)
     return extract_path
 
-st.title("Konversi Koordinat dan Cek Kawasan Konservasi")
+st.title("Konversi Koordinat Perizinan I")
 
-format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-DD"))
+format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-Decimal Degree"))
 
 if format_pilihan == "OSS-UTM":
     st.write("Format OSS-UTM dipilih. Kolom: `id`, `bujur_derajat`, `bujur_menit`, `bujur_detik`, `BT_BB`, `lintang_derajat`, `lintang_menit`, `lintang_detik`, `LU_LS`")
