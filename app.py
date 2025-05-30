@@ -6,9 +6,8 @@ import tempfile
 import os
 import zipfile
 import requests
-import urllib3
-import json
 from io import BytesIO
+import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -20,54 +19,22 @@ def dms_to_dd(degree, minute, second, direction):
 
 @st.cache_data
 def get_kawasan_konservasi_from_arcgis():
-    url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
+    url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/MapServer/1/query"
     params = {
         "where": "1=1",
         "outFields": "*",
         "f": "geojson"
     }
     try:
-        response = requests.get(url, params=params, verify=False, timeout=20)
+        response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
             gdf = gpd.read_file(BytesIO(response.content))
             return gdf
         else:
-            st.warning(f"Gagal mengunduh data kawasan konservasi: status code {response.status_code}")
+            st.warning(f"Gagal mengunduh data: status code {response.status_code}")
             return None
     except Exception as e:
-        st.warning(f"Gagal mengambil data kawasan konservasi dari ArcGIS Server: {e}")
-        return None
-
-@st.cache_data
-def get_kkprl_from_arcgis():
-    url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/FeatureServer/1/query"
-    params = {
-        "where": "1=1",
-        "outFields": "*",
-        "f": "geojson",
-        "returnGeometry": "true"
-    }
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-    try:
-        response = requests.get(url, params=params, headers=headers, verify=False, timeout=20)
-        if response.status_code == 200:
-            if response.text.strip() == "":
-                st.warning("Response kosong dari server KKPRL.")
-                return None
-            geojson_data = response.json()
-            if 'features' in geojson_data:
-                gdf = gpd.GeoDataFrame.from_features(geojson_data['features'], crs="EPSG:4326")
-                return gdf
-            else:
-                st.warning("Data KKPRL tidak berisi fitur yang valid.")
-                return None
-        else:
-            st.warning(f"Gagal mengunduh data KKPRL: status code {response.status_code}")
-            return None
-    except Exception as e:
-        st.warning(f"Gagal mengambil data KKPRL dari ArcGIS Server: {e}")
+        st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
@@ -92,14 +59,6 @@ except Exception as e:
     konservasi_gdf = None
     st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
 
-try:
-    kkprl_gdf = get_kkprl_from_arcgis()
-    if kkprl_gdf is None:
-        st.warning("Gagal memuat data KKPRL dari ArcGIS Server.")
-except Exception as e:
-    kkprl_gdf = None
-    st.warning(f"Gagal mengambil data KKPRL dari ArcGIS Server: {e}")
-
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
     if df.shape[0] > 20:
@@ -112,29 +71,22 @@ if uploaded_file and nama_file:
     else:
         df.rename(columns={'x': 'longitude', 'y': 'latitude'}, inplace=True)
 
+    # Buat GeoDataFrame
     if shp_type == "Titik (Point)":
         geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
         gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
 
         if konservasi_gdf is not None:
+            # Spatial join untuk menambahkan atribut 'namobj' kawasan konservasi ke tiap titik jika ada
             joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
             points_in_konservasi = joined[~joined['namobj'].isna()]
+
             if not points_in_konservasi.empty:
                 st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
                 st.subheader("Detail Kawasan Konservasi untuk Titik")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
                 st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
-
-        if kkprl_gdf is not None:
-            joined_kkprl = gpd.sjoin(gdf, kkprl_gdf[['geometry']], how='left', predicate='within')
-            points_in_kkprl = joined_kkprl[~joined_kkprl.index_right.isna()]
-            if not points_in_kkprl.empty:
-                st.success(f"{len(points_in_kkprl)} titik berada di dalam area KKPRL ⚠️⚠️")
-                st.subheader("Detail Titik di KKPRL")
-                st.dataframe(points_in_kkprl[['id']])
-            else:
-                st.info("Tidak ada titik yang berada di area KKPRL ✅✅")
 
     else:
         coords = list(zip(df['longitude'], df['latitude']))
@@ -151,15 +103,6 @@ if uploaded_file and nama_file:
                 st.dataframe(overlay_result[['id', 'namobj']])
             else:
                 st.info("Poligon tidak berada di kawasan konservasi ✅✅")
-
-        if kkprl_gdf is not None:
-            overlay_kkprl = gpd.overlay(gdf, kkprl_gdf[['geometry']], how='intersection')
-            if not overlay_kkprl.empty:
-                st.success("Poligon bersinggungan dengan area KKPRL ⚠️⚠️")
-                st.subheader("Detail Overlay Poligon dengan KKPRL")
-                st.dataframe(overlay_kkprl[['id']])
-            else:
-                st.info("Poligon tidak bersinggungan dengan area KKPRL ✅✅")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
