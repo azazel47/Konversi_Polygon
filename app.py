@@ -18,8 +18,8 @@ def dms_to_dd(degree, minute, second, direction):
     return dd
 
 # MASUKAN USERNAME & PASSWORD ArcGIS kamu di sini
-username = st.secrets.get("pemetaan.kkprl", "")  # alternatif bisa langsung isi string: username = "user"
-password = st.secrets.get("prlkapital1234", "")  # alternatif: password = "pass"
+username = "pemetaan.kkprl"
+password = "prlkapital1234"
 
 @st.cache_data(show_spinner=False)
 def get_arcgis_token(username, password):
