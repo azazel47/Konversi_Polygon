@@ -52,18 +52,25 @@ def get_kawasan_konservasi_from_arcgis(token):
         "f": "geojson",
         "token": token
     }
+    headers = {
+        "Accept": "application/json"
+    }
     try:
-        response = requests.get(url, params=params, verify=False)
+        response = requests.get(url, params=params, headers=headers, verify=False)
+        st.write("URL request:", response.url)
+        st.write("Status code:", response.status_code)
         if response.status_code == 200:
             geojson_str = response.text
             gdf = gpd.read_file(io.StringIO(geojson_str))
             return gdf
         else:
             st.warning(f"Gagal mengunduh data: status code {response.status_code}")
+            st.write("Response content:", response.text)
             return None
     except Exception as e:
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
+
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
