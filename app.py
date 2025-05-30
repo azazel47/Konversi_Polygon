@@ -18,11 +18,12 @@ def dms_to_dd(degree, minute, second, direction):
     return dd
 
 @st.cache_data
-def get_geojson_from_arcgis(url):
+def get_geojson_from_arcgis_export(url):
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "geojson"
+        "f": "geojson",
+        "outSR": "4326"
     }
     try:
         response = requests.get(url, params=params, verify=False)
@@ -46,14 +47,15 @@ else:
     st.write("Format General-DD dipilih. Kolom: `id`, `x`, `y`")
 
 uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
-shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)", "Poligon (Polygon)"))
+shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
+
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
 
-# Load kawasan konservasi
-konservasi_gdf = get_geojson_from_arcgis("https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query")
+konservasi_url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
+kkprl_url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
 
-# Load kawasan hutan (KKPRL)
-kkprl_gdf = get_geojson_from_arcgis("https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query")
+konservasi_gdf = get_geojson_from_arcgis_export(konservasi_url)
+kkprl_gdf = get_geojson_from_arcgis_export(kkprl_url)
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
@@ -72,22 +74,19 @@ if uploaded_file and nama_file:
         gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
 
         if konservasi_gdf is not None:
-            joined_konservasi = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
-            points_in_konservasi = joined_konservasi[~joined_konservasi['namobj'].isna()]
+            joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
+            points_in_konservasi = joined[~joined['namobj'].isna()]
             if not points_in_konservasi.empty:
                 st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️")
-                st.subheader("Kawasan Konservasi:")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
                 st.info("Tidak ada titik yang berada di kawasan konservasi ✅")
 
         if kkprl_gdf is not None:
-            joined_kkprl = gpd.sjoin(gdf, kkprl_gdf[['NAMOBJ', 'geometry']], how='left', predicate='within')
-            points_in_kkprl = joined_kkprl[~joined_kkprl['NAMOBJ'].isna()]
+            joined2 = gpd.sjoin(gdf, kkprl_gdf[['geometry']], how='left', predicate='within')
+            points_in_kkprl = joined2[~joined2.index_right.isna()]
             if not points_in_kkprl.empty:
-                st.warning(f"{len(points_in_kkprl)} titik berada di Kawasan Hutan (KKPRL) 🌲")
-                st.subheader("Kawasan Hutan (KKPRL):")
-                st.dataframe(points_in_kkprl[['id', 'NAMOBJ']])
+                st.success(f"{len(points_in_kkprl)} titik berada di dalam Kawasan Hutan (KKPRL) 🌳")
             else:
                 st.info("Tidak ada titik yang berada di kawasan hutan ✅")
 
@@ -99,22 +98,19 @@ if uploaded_file and nama_file:
         gdf = gpd.GeoDataFrame(pd.DataFrame({"id": ["polygon_1"]}), geometry=geometry, crs="EPSG:4326")
 
         if konservasi_gdf is not None:
-            overlay_konservasi = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
-            if not overlay_konservasi.empty:
-                st.success("Poligon bersinggungan dengan Kawasan Konservasi ⚠️")
-                st.subheader("Kawasan Konservasi:")
-                st.dataframe(overlay_konservasi[['id', 'namobj']])
+            overlay_result = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
+            if not overlay_result.empty:
+                st.success("Poligon berada di dalam Kawasan Konservasi ⚠️")
+                st.dataframe(overlay_result[['id', 'namobj']])
             else:
-                st.info("Poligon tidak bersinggungan dengan kawasan konservasi ✅")
+                st.info("Poligon tidak berada di kawasan konservasi ✅")
 
         if kkprl_gdf is not None:
-            overlay_kkprl = gpd.overlay(gdf, kkprl_gdf[['NAMOBJ', 'geometry']], how='intersection')
+            overlay_kkprl = gpd.overlay(gdf, kkprl_gdf[['geometry']], how='intersection')
             if not overlay_kkprl.empty:
-                st.warning("Poligon bersinggungan dengan Kawasan Hutan (KKPRL) 🌲")
-                st.subheader("Kawasan Hutan (KKPRL):")
-                st.dataframe(overlay_kkprl[['id', 'NAMOBJ']])
+                st.success("Poligon berada di dalam Kawasan Hutan (KKPRL) 🌳")
             else:
-                st.info("Poligon tidak bersinggungan dengan kawasan hutan ✅")
+                st.info("Poligon tidak berada di kawasan hutan ✅")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
