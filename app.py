@@ -6,8 +6,8 @@ import tempfile
 import os
 import zipfile
 import requests
-from io import BytesIO
 import urllib3
+import json
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -48,8 +48,13 @@ def get_kkprl_from_arcgis():
     try:
         response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
-            gdf = gpd.read_file(BytesIO(response.content))
-            return gdf
+            geojson_data = response.json()
+            if 'features' in geojson_data:
+                gdf = gpd.GeoDataFrame.from_features(geojson_data['features'], crs="EPSG:4326")
+                return gdf
+            else:
+                st.warning("Data KKPRL tidak berisi fitur yang valid.")
+                return None
         else:
             st.warning(f"Gagal mengunduh data KKPRL: status code {response.status_code}")
             return None
