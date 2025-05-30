@@ -8,7 +8,6 @@ import zipfile
 import requests
 from io import BytesIO
 import urllib3
-from arcgis.features import FeatureSet
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -44,16 +43,14 @@ def get_kawasan_hutan_from_arcgis():
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "json",
+        "f": "geojson",
         "returnGeometry": True,
         "outSR": 4326
     }
     try:
         response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
-            featureset = FeatureSet.from_dict(response.json())
-            gdf = featureset.sdf
-            gdf = gpd.GeoDataFrame(gdf, geometry=gpd.GeoSeries.from_esri(featureset.features), crs="EPSG:4326")
+            gdf = gpd.read_file(BytesIO(response.content))
             return gdf
         else:
             st.warning(f"Gagal mengunduh data kawasan hutan: status code {response.status_code}")
