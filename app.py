@@ -39,7 +39,7 @@ def get_kawasan_konservasi_from_arcgis():
 
 @st.cache_data
 def get_kawasan_hutan_from_arcgis():
-    url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
+    url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/FeatureServer/1/query"
     params = {
         "where": "1=1",
         "outFields": "*",
