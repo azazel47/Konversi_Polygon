@@ -8,6 +8,7 @@ import zipfile
 import requests
 from io import BytesIO
 import urllib3
+from arcgis.features import FeatureSet
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -18,12 +19,12 @@ def dms_to_dd(degree, minute, second, direction):
     return dd
 
 @st.cache_data
-def get_geojson_from_arcgis_export(url):
+def get_kawasan_konservasi_from_arcgis():
+    url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "geojson",
-        "outSR": "4326"
+        "f": "geojson"
     }
     try:
         response = requests.get(url, params=params, verify=False)
@@ -35,6 +36,30 @@ def get_geojson_from_arcgis_export(url):
             return None
     except Exception as e:
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
+        return None
+
+@st.cache_data
+def get_kawasan_hutan_from_arcgis():
+    url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "f": "json",
+        "returnGeometry": True,
+        "outSR": 4326
+    }
+    try:
+        response = requests.get(url, params=params, verify=False)
+        if response.status_code == 200:
+            featureset = FeatureSet.from_dict(response.json())
+            gdf = featureset.sdf
+            gdf = gpd.GeoDataFrame(gdf, geometry=gpd.GeoSeries.from_esri(featureset.features), crs="EPSG:4326")
+            return gdf
+        else:
+            st.warning(f"Gagal mengunduh data kawasan hutan: status code {response.status_code}")
+            return None
+    except Exception as e:
+        st.warning(f"Gagal mengambil data kawasan hutan dari ArcGIS Server: {e}")
         return None
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
@@ -49,13 +74,10 @@ else:
 uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
 shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
 
-nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
+nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬆️", value="koordinat_shapefile")
 
-konservasi_url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
-kkprl_url = "https://utility.arcgis.com/usrsvcs/servers/ff6238a54c304ad8a0a627dd238d2171/rest/services/KKPRL/KKPRL/FeatureServer/0/query"
-
-konservasi_gdf = get_geojson_from_arcgis_export(konservasi_url)
-kkprl_gdf = get_geojson_from_arcgis_export(kkprl_url)
+konservasi_gdf = get_kawasan_konservasi_from_arcgis()
+hutan_gdf = get_kawasan_hutan_from_arcgis()
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
@@ -77,20 +99,21 @@ if uploaded_file and nama_file:
             joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
             points_in_konservasi = joined[~joined['namobj'].isna()]
             if not points_in_konservasi.empty:
-                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️")
+                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
+                st.subheader("Detail Kawasan Konservasi untuk Titik")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
-                st.info("Tidak ada titik yang berada di kawasan konservasi ✅")
+                st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
-        if kkprl_gdf is not None:
-            joined2 = gpd.sjoin(gdf, kkprl_gdf[['geometry']], how='left', predicate='within')
-            points_in_kkprl = joined2[~joined2.index_right.isna()]
-            if not points_in_kkprl.empty:
-                st.success(f"{len(points_in_kkprl)} titik berada di dalam Kawasan Hutan (KKPRL) 🌳")
+        if hutan_gdf is not None:
+            joined_hutan = gpd.sjoin(gdf, hutan_gdf[['geometry']], how='left', predicate='within')
+            points_in_hutan = joined_hutan[~joined_hutan['index_right'].isna()]
+            if not points_in_hutan.empty:
+                st.success(f"{len(points_in_hutan)} titik berada di dalam Kawasan Hutan 🌲🌲")
             else:
-                st.info("Tidak ada titik yang berada di kawasan hutan ✅")
+                st.info("Tidak ada titik yang berada di kawasan hutan")
 
-    else:  # Poligon
+    else:
         coords = list(zip(df['longitude'], df['latitude']))
         if coords[0] != coords[-1]:
             coords.append(coords[0])
@@ -100,17 +123,18 @@ if uploaded_file and nama_file:
         if konservasi_gdf is not None:
             overlay_result = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
             if not overlay_result.empty:
-                st.success("Poligon berada di dalam Kawasan Konservasi ⚠️")
+                st.success("Poligon berada di dalam Kawasan Konservasi ⚠️⚠️")
+                st.subheader("Detail Kawasan Konservasi yang bersinggungan dengan Poligon")
                 st.dataframe(overlay_result[['id', 'namobj']])
             else:
-                st.info("Poligon tidak berada di kawasan konservasi ✅")
+                st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
-        if kkprl_gdf is not None:
-            overlay_kkprl = gpd.overlay(gdf, kkprl_gdf[['geometry']], how='intersection')
-            if not overlay_kkprl.empty:
-                st.success("Poligon berada di dalam Kawasan Hutan (KKPRL) 🌳")
+        if hutan_gdf is not None:
+            overlay_hutan = gpd.overlay(gdf, hutan_gdf[['geometry']], how='intersection')
+            if not overlay_hutan.empty:
+                st.success("Poligon berada di dalam Kawasan Hutan 🌲🌲")
             else:
-                st.info("Poligon tidak berada di kawasan hutan ✅")
+                st.info("Poligon tidak berada di kawasan hutan")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
