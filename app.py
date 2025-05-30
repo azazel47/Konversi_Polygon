@@ -8,6 +8,7 @@ import zipfile
 import requests
 import urllib3
 import json
+from io import BytesIO
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -26,15 +27,15 @@ def get_kawasan_konservasi_from_arcgis():
         "f": "geojson"
     }
     try:
-        response = requests.get(url, params=params, verify=False)
+        response = requests.get(url, params=params, verify=False, timeout=20)
         if response.status_code == 200:
             gdf = gpd.read_file(BytesIO(response.content))
             return gdf
         else:
-            st.warning(f"Gagal mengunduh data: status code {response.status_code}")
+            st.warning(f"Gagal mengunduh data kawasan konservasi: status code {response.status_code}")
             return None
     except Exception as e:
-        st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
+        st.warning(f"Gagal mengambil data kawasan konservasi dari ArcGIS Server: {e}")
         return None
 
 @st.cache_data
@@ -43,11 +44,18 @@ def get_kkprl_from_arcgis():
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "geojson"
+        "f": "geojson",
+        "returnGeometry": "true"
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0"
     }
     try:
-        response = requests.get(url, params=params, verify=False)
+        response = requests.get(url, params=params, headers=headers, verify=False, timeout=20)
         if response.status_code == 200:
+            if response.text.strip() == "":
+                st.warning("Response kosong dari server KKPRL.")
+                return None
             geojson_data = response.json()
             if 'features' in geojson_data:
                 gdf = gpd.GeoDataFrame.from_features(geojson_data['features'], crs="EPSG:4326")
