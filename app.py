@@ -6,7 +6,7 @@ import tempfile
 import os
 import zipfile
 import requests
-from io import BytesIO
+import io
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -17,20 +17,45 @@ def dms_to_dd(degree, minute, second, direction):
         dd *= -1
     return dd
 
-import io
+# MASUKAN USERNAME & PASSWORD ArcGIS kamu di sini
+username = st.secrets.get("arcgis_username", "")  # alternatif bisa langsung isi string: username = "user"
+password = st.secrets.get("arcgis_password", "")  # alternatif: password = "pass"
 
-@st.cache_data
-def get_kawasan_konservasi_from_arcgis():
+@st.cache_data(show_spinner=False)
+def get_arcgis_token(username, password):
+    url = "https://arcgis.ruanglaut.id/arcgis/tokens/generateToken"
+    params = {
+        'username': pemetaan.kkprl,
+        'password': prlkapital1234,
+        'f': 'json',
+        'client': 'requestip',
+        'expiration': 60  # token berlaku 60 menit
+    }
+    try:
+        response = requests.post(url, data=params, verify=False)
+        token_json = response.json()
+        if 'token' in token_json:
+            return token_json['token']
+        else:
+            st.error(f"Gagal mendapatkan token ArcGIS: {token_json}")
+            return None
+    except Exception as e:
+        st.error(f"Error saat generate token: {e}")
+        return None
+
+@st.cache_data(show_spinner=False)
+def get_kawasan_konservasi_from_arcgis(token):
     url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/MapServer/1/query"
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "geojson"
+        "f": "geojson",
+        "token": token
     }
     try:
         response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
-            geojson_str = response.text  # text GeoJSON
+            geojson_str = response.text
             gdf = gpd.read_file(io.StringIO(geojson_str))
             return gdf
         else:
@@ -39,7 +64,6 @@ def get_kawasan_konservasi_from_arcgis():
     except Exception as e:
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
-
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
@@ -55,13 +79,17 @@ shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)",
 
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
 
-try:
-    konservasi_gdf = get_kawasan_konservasi_from_arcgis()
-    if konservasi_gdf is None:
-        st.warning("Gagal memuat kawasan konservasi dari ArcGIS Server.")
-except Exception as e:
+if not username or not password:
+    st.warning("⚠️ Masukkan username dan password ArcGIS di variabel `username` dan `password` pada kode!")
+else:
+    token = get_arcgis_token(username, password)
     konservasi_gdf = None
-    st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
+    if token:
+        konservasi_gdf = get_kawasan_konservasi_from_arcgis(token)
+        if konservasi_gdf is None:
+            st.warning("Gagal memuat kawasan konservasi dari ArcGIS Server.")
+    else:
+        st.warning("Token ArcGIS tidak tersedia. Tidak dapat memuat kawasan konservasi.")
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
@@ -75,13 +103,11 @@ if uploaded_file and nama_file:
     else:
         df.rename(columns={'x': 'longitude', 'y': 'latitude'}, inplace=True)
 
-    # Buat GeoDataFrame
     if shp_type == "Titik (Point)":
         geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
         gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
 
         if konservasi_gdf is not None:
-            # Spatial join untuk menambahkan atribut 'namobj' kawasan konservasi ke tiap titik jika ada
             joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
             points_in_konservasi = joined[~joined['namobj'].isna()]
 
