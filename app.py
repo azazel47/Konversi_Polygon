@@ -17,6 +17,8 @@ def dms_to_dd(degree, minute, second, direction):
         dd *= -1
     return dd
 
+import io
+
 @st.cache_data
 def get_kawasan_konservasi_from_arcgis():
     url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/MapServer/1/query"
@@ -28,7 +30,8 @@ def get_kawasan_konservasi_from_arcgis():
     try:
         response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
-            gdf = gpd.read_file(BytesIO(response.content))
+            geojson_str = response.text  # text GeoJSON
+            gdf = gpd.read_file(io.StringIO(geojson_str))
             return gdf
         else:
             st.warning(f"Gagal mengunduh data: status code {response.status_code}")
@@ -36,6 +39,7 @@ def get_kawasan_konservasi_from_arcgis():
     except Exception as e:
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
+
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
