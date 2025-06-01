@@ -49,7 +49,7 @@ else:
 uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
 shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)", "Poligon (Polygon)"))
 
-nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
+nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
 try:
     konservasi_gdf = get_kawasan_konservasi_from_arcgis()
