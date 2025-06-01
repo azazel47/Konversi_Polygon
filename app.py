@@ -6,9 +6,10 @@ import tempfile
 import os
 import zipfile
 import requests
-import io
+from io import BytesIO
+import urllib3
 
-st.set_page_config(page_title="Konversi Koordinat dan Analisis Spasial - Verdok", layout="wide")
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def dms_to_dd(degree, minute, second, direction):
     dd = degree + minute / 60 + second / 3600
@@ -17,37 +18,26 @@ def dms_to_dd(degree, minute, second, direction):
     return dd
 
 @st.cache_data
-def get_kawasan_konservasi_from_arcgis(token):
-    if not token:
-        st.warning("Token belum dimasukkan.")
-        return None
-    url = "https://arcgis.ruanglaut.id/arcgis/rest/services/KKPRL/KKPRL/MapServer/1/query"
+def get_kawasan_konservasi_from_arcgis():
+    url = "https://kspservices.big.go.id/satupeta/rest/services/PUBLIK/SUMBER_DAYA_ALAM_DAN_LINGKUNGAN/MapServer/35/query"
     params = {
         "where": "1=1",
         "outFields": "*",
-        "f": "geojson",
-        "token": token
+        "f": "geojson"
     }
     try:
         response = requests.get(url, params=params, verify=False)
         if response.status_code == 200:
-            gdf = gpd.read_file(io.StringIO(response.text))
+            gdf = gpd.read_file(BytesIO(response.content))
             return gdf
         else:
             st.warning(f"Gagal mengunduh data: status code {response.status_code}")
-            st.write("Response content:", response.text)
             return None
     except Exception as e:
         st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
         return None
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
-
-st.markdown("""
-Masukkan **token ArcGIS** yang sudah kamu dapatkan dari [https://arcgis.ruanglaut.id/arcgis/tokens/](https://arcgis.ruanglaut.id/arcgis/tokens/) untuk mengakses data Kawasan Konservasi.
-""")
-
-token = st.text_input("Masukkan token ArcGIS", type="password")
 
 format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-DD"))
 
@@ -61,10 +51,13 @@ shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)",
 
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="koordinat_shapefile")
 
-konservasi_gdf = get_kawasan_konservasi_from_arcgis(token)
-
-if konservasi_gdf is not None:
-    st.success(f"Berhasil memuat {len(konservasi_gdf)} fitur kawasan konservasi")
+try:
+    konservasi_gdf = get_kawasan_konservasi_from_arcgis()
+    if konservasi_gdf is None:
+        st.warning("Gagal memuat kawasan konservasi dari ArcGIS Server.")
+except Exception as e:
+    konservasi_gdf = None
+    st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
