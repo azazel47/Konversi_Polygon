@@ -39,7 +39,7 @@ def get_kawasan_konservasi_from_arcgis():
 
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
-format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-DD"))
+format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-Decimal Degree"))
 
 if format_pilihan == "OSS-UTM":
     st.write("Format OSS-UTM dipilih. Kolom: `id`, `bujur_derajat`, `bujur_menit`, `bujur_detik`, `BT_BB`, `lintang_derajat`, `lintang_menit`, `lintang_detik`, `LU_LS`")
