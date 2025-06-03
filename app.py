@@ -61,9 +61,9 @@ except Exception as e:
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
-    if df.shape[0] > 20:
+    if df.shape[0] > 50:
         st.warning("Hanya 20 baris pertama yang akan diproses.")
-        df = df.head(20)
+        df = df.head(50)
 
     if format_pilihan == "OSS-UTM":
         df['longitude'] = df.apply(lambda row: dms_to_dd(row['bujur_derajat'], row['bujur_menit'], row['bujur_detik'], row['BT_BB']), axis=1)
