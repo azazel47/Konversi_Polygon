@@ -90,7 +90,7 @@ except Exception as e:
 
 # Ambil data 12 mil dari Google Drive
 try:
-    mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
+    mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/140lv4AAS9UmiA-5wII1CCv0CxrZXFNvk/view?usp=sharing")
     if mil12_gdf is None:
         st.warning("Gagal memuat shapefile 12 Mil.")
 except Exception as e:
