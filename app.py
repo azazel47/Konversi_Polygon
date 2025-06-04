@@ -135,8 +135,8 @@ if uploaded_file and nama_file:
             overlay_mil = gpd.overlay(gdf, mil12_gdf[['WP', 'geometry']], how='intersection')
             if not overlay_mil.empty:
                 wp_values = overlay_mil['WP'].dropna().unique()
-                st.success("Poligon berada di dalam wilayah 12 Mil Laut 🌊🌊")
-                st.write("Berada di Provinsi:", ", ".join(wp_values))
+                wp_string = ", ".join(wp_values)
+                st.success(f"Poligon berada di dalam wilayah 12 Mil Laut (Hasil WP): {wp_string} 🌊🌊")
             else:
                 st.info("Poligon di luar wilayah 12 Mil Laut ✅")
 
