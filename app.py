@@ -76,11 +76,9 @@ uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
 shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
-# Ambil data konservasi dan 12 mil
 konservasi_gdf = get_kawasan_konservasi_from_arcgis()
 mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
 
-# Proses file Excel
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
     if df.shape[0] > 50:
@@ -101,8 +99,9 @@ if uploaded_file and nama_file:
             joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
             points_in_konservasi = joined[~joined['namobj'].isna()]
             if not points_in_konservasi.empty:
-                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
-                st.dataframe(points_in_konservasi[['id', 'namobj']])
+                namobj_values = points_in_konservasi['namobj'].dropna().unique()
+                namobj_string = ", ".join(namobj_values)
+                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ({namobj_string}) ⚠️⚠️")
             else:
                 st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
@@ -112,8 +111,8 @@ if uploaded_file and nama_file:
             if not points_in_mil.empty:
                 wp_values = points_in_mil['WP'].dropna().unique()
                 wp_string = ", ".join(wp_values)
-                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut {wp_string} 🌊🌊")
-
+                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut 🌊🌊")
+                st.write(f"Berada di Provinsi (Hasil WP): {wp_string}")
             else:
                 st.info("Titik di luar wilayah 12 Mil Laut ✅")
 
@@ -127,8 +126,9 @@ if uploaded_file and nama_file:
         if konservasi_gdf is not None:
             overlay_result = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
             if not overlay_result.empty:
-                st.success("Poligon berada di dalam Kawasan Konservasi ⚠️⚠️")
-                st.dataframe(overlay_result[['id', 'namobj']])
+                namobj_values = overlay_result['namobj'].dropna().unique()
+                namobj_string = ", ".join(namobj_values)
+                st.success(f"Poligon berada di dalam Kawasan Konservasi ({namobj_string}) ⚠️⚠️")
             else:
                 st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
@@ -137,7 +137,7 @@ if uploaded_file and nama_file:
             if not overlay_mil.empty:
                 wp_values = overlay_mil['WP'].dropna().unique()
                 wp_string = ", ".join(wp_values)
-                st.success(f"Poligon berada di dalam wilayah 12 Mil Laut {wp_string} 🌊🌊")
+                st.success(f"Poligon berada di dalam wilayah 12 Mil Laut (Hasil WP): {wp_string} 🌊🌊")
             else:
                 st.info("Poligon di luar wilayah 12 Mil Laut ✅")
 
