@@ -6,6 +6,7 @@ import tempfile
 import os
 import zipfile
 import requests
+import gdown
 from io import BytesIO
 import urllib3
 
@@ -40,25 +41,21 @@ def get_kawasan_konservasi_from_arcgis():
 def download_shapefile_from_gdrive(gdrive_url):
     try:
         file_id = gdrive_url.split("/d/")[1].split("/")[0]
-        download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        response = requests.get(download_url, stream=True)
-        if response.status_code == 200:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                zip_path = os.path.join(tmpdirname, "12mil.zip")
-                with open(zip_path, "wb") as f:
-                    f.write(response.content)
+        download_url = f"https://drive.google.com/uc?id={file_id}"
+        
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            zip_path = os.path.join(tmpdirname, "12mil.zip")
+            gdown.download(download_url, zip_path, quiet=False)
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(tmpdirname)
 
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(tmpdirname)
-
-                for file in os.listdir(tmpdirname):
-                    if file.endswith(".shp"):
-                        shp_path = os.path.join(tmpdirname, file)
-                        gdf = gpd.read_file(shp_path)
-                        return gdf
-        else:
-            st.warning("Gagal mengunduh file dari Google Drive.")
-            return None
+            for file in os.listdir(tmpdirname):
+                if file.endswith(".shp"):
+                    shp_path = os.path.join(tmpdirname, file)
+                    gdf = gpd.read_file(shp_path)
+                    return gdf
+        return None
     except Exception as e:
         st.warning(f"Gagal mengunduh dan membaca shapefile dari Google Drive: {e}")
         return None
@@ -80,22 +77,10 @@ shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)",
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
 # Ambil data kawasan konservasi
-try:
-    konservasi_gdf = get_kawasan_konservasi_from_arcgis()
-    if konservasi_gdf is None:
-        st.warning("Gagal memuat kawasan konservasi dari ArcGIS Server.")
-except Exception as e:
-    konservasi_gdf = None
-    st.warning(f"Gagal mengambil data dari ArcGIS Server: {e}")
+konservasi_gdf = get_kawasan_konservasi_from_arcgis()
 
 # Ambil data 12 mil dari Google Drive
-try:
-    mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/140lv4AAS9UmiA-5wII1CCv0CxrZXFNvk/view?usp=sharing")
-    if mil12_gdf is None:
-        st.warning("Gagal memuat shapefile 12 Mil.")
-except Exception as e:
-    mil12_gdf = None
-    st.warning(f"Gagal memproses shapefile 12 Mil: {e}")
+mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
 
 # Proses file Excel
 if uploaded_file and nama_file:
@@ -114,7 +99,6 @@ if uploaded_file and nama_file:
         geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
         gdf = gpd.GeoDataFrame(df[['id']], geometry=geometry, crs="EPSG:4326")
 
-        # Cek dengan Kawasan Konservasi
         if konservasi_gdf is not None:
             joined = gpd.sjoin(gdf, konservasi_gdf[['namobj', 'geometry']], how='left', predicate='within')
             points_in_konservasi = joined[~joined['namobj'].isna()]
@@ -122,9 +106,8 @@ if uploaded_file and nama_file:
                 st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
-                st.info("Tidak ada titik yang berada di kawasan konservasi ✅⚠️")
+                st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
-        # Cek dengan 12 Mil
         if mil12_gdf is not None:
             joined_mil = gpd.sjoin(gdf, mil12_gdf[['geometry']], how='left', predicate='within')
             points_in_mil = joined_mil[~joined_mil.index_right.isna()]
@@ -141,7 +124,6 @@ if uploaded_file and nama_file:
         geometry = [Polygon(coords)]
         gdf = gpd.GeoDataFrame(pd.DataFrame({"id": ["polygon_1"]}), geometry=geometry, crs="EPSG:4326")
 
-        # Cek dengan Kawasan Konservasi
         if konservasi_gdf is not None:
             overlay_result = gpd.overlay(gdf, konservasi_gdf[['namobj', 'geometry']], how='intersection')
             if not overlay_result.empty:
@@ -150,7 +132,6 @@ if uploaded_file and nama_file:
             else:
                 st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
-        # Cek dengan 12 Mil
         if mil12_gdf is not None:
             overlay_mil = gpd.overlay(gdf, mil12_gdf[['geometry']], how='intersection')
             if not overlay_mil.empty:
