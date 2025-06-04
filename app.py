@@ -61,9 +61,8 @@ def download_shapefile_from_gdrive(gdrive_url):
         return None
 
 # ================================
-# ========== MULAI APP ==========
+# ==== MULAI STREAMLIT APP ======
 # ================================
-
 st.title("Konversi Koordinat dan Analisis Spasial - Verdok")
 
 format_pilihan = st.radio("Pilih format data koordinat:", ("OSS-UTM", "General-Decimal Degree"))
@@ -81,7 +80,7 @@ nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)�
 konservasi_gdf = get_kawasan_konservasi_from_arcgis()
 mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
 
-# Proses Excel
+# Proses file Excel
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
     if df.shape[0] > 50:
@@ -108,18 +107,14 @@ if uploaded_file and nama_file:
                 st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
         if mil12_gdf is not None:
-            if "WP" not in mil12_gdf.columns:
-                st.warning("Shapefile 12 Mil tidak memiliki kolom 'WP'.")
+            joined_mil = gpd.sjoin(gdf, mil12_gdf[['WP', 'geometry']], how='left', predicate='within')
+            points_in_mil = joined_mil[~joined_mil['WP'].isna()]
+            if not points_in_mil.empty:
+                wp_values = points_in_mil['WP'].dropna().unique()
+                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut 🌊🌊")
+                st.write("Berada di Provinsi:", ", ".join(wp_values))
             else:
-                joined_mil = gpd.sjoin(gdf, mil12_gdf[['geometry', 'WP']], how='left', predicate='within')
-                points_in_mil = joined_mil[~joined_mil['WP'].isna()]
-                if not points_in_mil.empty:
-                    wp_values = points_in_mil['WP'].unique()
-                    st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Provinsi 🌊🌊")
-                    st.write("Berada di Provinsi:") 
-                    for wp in wp_values: st.markdown(f"- **{wp}**")
-                else:
-                    st.info("Titik diluar wilayah 12 Mil Laut Provinsi ✅")
+                st.info("Titik di luar wilayah 12 Mil Laut ✅")
 
     else:  # Poligon
         coords = list(zip(df['longitude'], df['latitude']))
@@ -137,17 +132,13 @@ if uploaded_file and nama_file:
                 st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
         if mil12_gdf is not None:
-            if "WP" not in mil12_gdf.columns:
-                st.warning("Shapefile 12 Mil tidak memiliki kolom 'WP'.")
+            overlay_mil = gpd.overlay(gdf, mil12_gdf[['WP', 'geometry']], how='intersection')
+            if not overlay_mil.empty:
+                wp_values = overlay_mil['WP'].dropna().unique()
+                st.success("Poligon berada di dalam wilayah 12 Mil Laut 🌊🌊")
+                st.write("Berada di Provinsi:", ", ".join(wp_values))
             else:
-                overlay_mil = gpd.overlay(gdf, mil12_gdf[['geometry', 'WP']], how='intersection')
-                if not overlay_mil.empty:
-                    wp_values = overlay_mil['WP'].unique()
-                    st.success("Poligon berada di dalam wilayah 12 Mil 🌊🌊")
-                    st.write("Berada di Provinsi:", ", ".join(wp_values))
-
-                else:
-                    st.info("Poligon diluar wilayah 12 Mil ⚠️⚠️")
+                st.info("Poligon di luar wilayah 12 Mil Laut ✅")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
