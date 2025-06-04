@@ -122,7 +122,7 @@ if uploaded_file and nama_file:
                 st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ⚠️⚠️")
                 st.dataframe(points_in_konservasi[['id', 'namobj']])
             else:
-                st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
+                st.info("Tidak ada titik yang berada di kawasan konservasi ✅⚠️")
 
         # Cek dengan 12 Mil
         if mil12_gdf is not None:
