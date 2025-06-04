@@ -101,7 +101,7 @@ if uploaded_file and nama_file:
             if not points_in_konservasi.empty:
                 namobj_values = points_in_konservasi['namobj'].dropna().unique()
                 namobj_string = ", ".join(namobj_values)
-                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi ({namobj_string}) ⚠️⚠️")
+                st.success(f"{len(points_in_konservasi)} titik berada di dalam Kawasan Konservasi {namobj_string} ⚠️⚠️")
             else:
                 st.info("Tidak ada titik yang berada di kawasan konservasi ✅✅")
 
@@ -128,7 +128,7 @@ if uploaded_file and nama_file:
             if not overlay_result.empty:
                 namobj_values = overlay_result['namobj'].dropna().unique()
                 namobj_string = ", ".join(namobj_values)
-                st.success(f"Poligon berada di dalam Kawasan Konservasi ({namobj_string}) ⚠️⚠️")
+                st.success(f"Poligon berada di dalam Kawasan Konservasi {namobj_string} ⚠️⚠️")
             else:
                 st.info("Poligon tidak berada di kawasan konservasi ✅✅")
 
