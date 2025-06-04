@@ -144,8 +144,8 @@ if uploaded_file and nama_file:
                 if not overlay_mil.empty:
                     wp_values = overlay_mil['WP'].unique()
                     st.success("Poligon berada di dalam wilayah 12 Mil 🌊🌊")
-                    st.write("Berada di Provinsi:") 
-                    for wp in wp_values: st.markdown(f"- **{wp}**")
+                    st.write("Berada di Provinsi:", ", ".join(wp_values))
+
                 else:
                     st.info("Poligon diluar wilayah 12 Mil ⚠️⚠️")
 
