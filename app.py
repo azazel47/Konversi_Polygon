@@ -112,8 +112,8 @@ if uploaded_file and nama_file:
             if not points_in_mil.empty:
                 wp_values = points_in_mil['WP'].dropna().unique()
                 wp_string = ", ".join(wp_values)
-                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut 🌊🌊")
-                st.write(f"Berada di Provinsi (Hasil WP): {wp_string}")
+                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut (Hasil WP): {wp_string} 🌊🌊")
+
             else:
                 st.info("Titik di luar wilayah 12 Mil Laut ✅")
 
