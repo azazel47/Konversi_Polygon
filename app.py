@@ -73,7 +73,7 @@ else:
     st.write("Format General-DD dipilih. Kolom: `id`, `x`, `y`")
 
 uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
-shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Titik (Point)", "Poligon (Polygon)"))
+shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
 # Ambil data kawasan konservasi
@@ -112,10 +112,10 @@ if uploaded_file and nama_file:
             joined_mil = gpd.sjoin(gdf, mil12_gdf[['geometry']], how='left', predicate='within')
             points_in_mil = joined_mil[~joined_mil.index_right.isna()]
             if not points_in_mil.empty:
-                st.success(f"{len(points_in_mil)} titik berada di dalam wilayah 12 Mil 🌊🌊")
+                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Provinsi 🌊🌊")
                 st.dataframe(points_in_mil[['id']])
             else:
-                st.info("Tidak ada titik yang berada di dalam wilayah 12 Mil ✅")
+                st.info("Titik diluar wilayah 12 Mil Laut Provinsi ✅")
 
     else:  # Polygon
         coords = list(zip(df['longitude'], df['latitude']))
@@ -137,7 +137,7 @@ if uploaded_file and nama_file:
             if not overlay_mil.empty:
                 st.success("Poligon berada di dalam wilayah 12 Mil 🌊🌊")
             else:
-                st.info("Poligon tidak berada di dalam wilayah 12 Mil ✅")
+                st.info("Poligon diluar wilayah 12 Mil ⚠️⚠️")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
