@@ -116,9 +116,7 @@ if uploaded_file and nama_file:
                 if not points_in_mil.empty:
                     wp_values = points_in_mil['WP'].unique()
                     st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Provinsi 🌊🌊")
-                    st.write("Berada di Provinsi:")
-                    for wp in wp_values:
-                        st.markdown(f"- **{wp}**")
+                    st.write("Berada di Provinsi:") for wp in wp_values: st.markdown(f"- **{wp}**")
                 else:
                     st.info("Titik diluar wilayah 12 Mil Laut Provinsi ✅")
 
@@ -145,9 +143,7 @@ if uploaded_file and nama_file:
                 if not overlay_mil.empty:
                     wp_values = overlay_mil['WP'].unique()
                     st.success("Poligon berada di dalam wilayah 12 Mil 🌊🌊")
-                    st.write("Berada di Provinsi:")
-                    for wp in wp_values:
-                        st.markdown(f"- **{wp}**")
+                    st.write("Berada di Provinsi:") for wp in wp_values: st.markdown(f"- **{wp}**")
                 else:
                     st.info("Poligon diluar wilayah 12 Mil ⚠️⚠️")
 
