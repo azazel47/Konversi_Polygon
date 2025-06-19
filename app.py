@@ -60,6 +60,29 @@ def download_shapefile_from_gdrive(gdrive_url):
         st.warning(f"Gagal mengunduh dan membaca shapefile dari Google Drive: {e}")
         return None
 
+def download_sedimentasi_shapefile():
+    try:
+        sedimentasi_url = "https://drive.google.com/file/d/1ZcruoWPzneMCn11Y7vmgCvIWFyO4Sgg6/view?usp=drive_link"
+        file_id = sedimentasi_url.split("/d/")[1].split("/")[0]
+        download_url = f"https://drive.google.com/uc?id={file_id}"
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            zip_path = os.path.join(tmpdirname, "sedimen.zip")
+            gdown.download(download_url, zip_path, quiet=False)
+
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(tmpdirname)
+
+            for file in os.listdir(tmpdirname):
+                if file.endswith(".shp"):
+                    shp_path = os.path.join(tmpdirname, file)
+                    gdf = gpd.read_file(shp_path)
+                    return gdf
+        return None
+    except Exception as e:
+        st.warning(f"Gagal mengunduh dan membaca shapefile Sedimentasi: {e}")
+        return None
+
 # ================================
 # ==== MULAI STREAMLIT APP ======
 # ================================
@@ -76,8 +99,10 @@ uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
 shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
+cek_sedimentasi = st.checkbox("Lakukan analisis Lokasi Prioritas Sedimentasi 🏖️")
 konservasi_gdf = get_kawasan_konservasi_from_arcgis()
 mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
+sedimen_gdf = download_sedimentasi_shapefile() if cek_sedimentasi else None
 
 if uploaded_file and nama_file:
     df = pd.read_excel(uploaded_file)
@@ -116,6 +141,14 @@ if uploaded_file and nama_file:
             else:
                 st.info("Titik di luar wilayah 12 Mil Laut ✅")
 
+        if sedimen_gdf is not None:
+            joined_sedimen = gpd.sjoin(gdf, sedimen_gdf[['geometry']], how='left', predicate='within')
+            points_in_sedimen = joined_sedimen[~joined_sedimen.index_right.isna()]
+            if not points_in_sedimen.empty:
+                st.success(f"{len(points_in_sedimen)} Titik berada di Lokasi Prioritas Sedimentasi 🏖️🏖️")
+            else:
+                st.info("Tidak ada titik di Lokasi Prioritas Sedimentasi ✅")
+
     else:  # Poligon
         coords = list(zip(df['longitude'], df['latitude']))
         if coords[0] != coords[-1]:
@@ -140,6 +173,13 @@ if uploaded_file and nama_file:
                 st.success(f"Poligon berada di dalam wilayah 12 Mil Laut (Hasil WP): {wp_string} 🌊🌊")
             else:
                 st.info("Poligon di luar wilayah 12 Mil Laut ✅")
+
+        if sedimen_gdf is not None:
+            overlay_sedimen = gpd.overlay(gdf, sedimen_gdf[['geometry']], how='intersection')
+            if not overlay_sedimen.empty:
+                st.success("Poligon berada di Lokasi Prioritas Sedimentasi 🏖️🏖️")
+            else:
+                st.info("Poligon tidak berada di Lokasi Prioritas Sedimentasi ✅")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
