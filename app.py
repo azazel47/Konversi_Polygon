@@ -99,7 +99,7 @@ uploaded_file = st.file_uploader("Unggah file Excel", type=["xlsx"])
 shp_type = st.radio("Pilih tipe shapefile yang ingin dibuat:", ("Poligon (Polygon)", "Titik (Point)"))
 nama_file = st.text_input("➡️Masukkan nama file shapefile (tanpa ekstensi)⬅️", value="nama_shapefile")
 
-cek_sedimentasi = st.checkbox("Lakukan analisis Lokasi Prioritas Sedimentasi 🏖️")
+cek_sedimentasi = st.checkbox("Sedimentasi 🏖️")
 konservasi_gdf = get_kawasan_konservasi_from_arcgis()
 mil12_gdf = download_shapefile_from_gdrive("https://drive.google.com/file/d/16MnH27AofcSSr45jTvmopOZx4CMPxMKs/view?usp=sharing")
 sedimen_gdf = download_sedimentasi_shapefile() if cek_sedimentasi else None
@@ -136,18 +136,18 @@ if uploaded_file and nama_file:
             if not points_in_mil.empty:
                 wp_values = points_in_mil['WP'].dropna().unique()
                 wp_string = ", ".join(wp_values)
-                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut 🌊🌊")
-                st.write(f"Berada di Provinsi (Hasil WP): {wp_string}")
+                st.success(f"{len(points_in_mil)} Titik berada di dalam wilayah 12 Mil Laut ✅✅")
+                st.write(f"Berada di Provinsi: {wp_string}")
             else:
-                st.info("Titik di luar wilayah 12 Mil Laut ✅")
+                st.info("Titik di luar wilayah 12 Mil Laut ⚠️⚠️")
 
         if sedimen_gdf is not None:
             joined_sedimen = gpd.sjoin(gdf, sedimen_gdf[['geometry']], how='left', predicate='within')
             points_in_sedimen = joined_sedimen[~joined_sedimen.index_right.isna()]
             if not points_in_sedimen.empty:
-                st.success(f"{len(points_in_sedimen)} Titik berada di Lokasi Prioritas Sedimentasi 🏖️🏖️")
+                st.success(f"{len(points_in_sedimen)} Titik berada di Lokasi Prioritas Sedimentasi ✅✅")
             else:
-                st.info("Tidak ada titik di Lokasi Prioritas Sedimentasi ✅")
+                st.info("Titik diluar Lokasi Prioritas Sedimentasi ⚠️⚠️")
 
     else:  # Poligon
         coords = list(zip(df['longitude'], df['latitude']))
@@ -170,16 +170,16 @@ if uploaded_file and nama_file:
             if not overlay_mil.empty:
                 wp_values = overlay_mil['WP'].dropna().unique()
                 wp_string = ", ".join(wp_values)
-                st.success(f"Poligon berada di dalam wilayah 12 Mil Laut (Hasil WP): {wp_string} 🌊🌊")
+                st.success(f"Poligon berada di dalam wilayah 12 Mil Laut: {wp_string} ✅✅")
             else:
-                st.info("Poligon di luar wilayah 12 Mil Laut ✅")
+                st.info("Poligon di luar wilayah 12 Mil Laut ⚠️⚠️")
 
         if sedimen_gdf is not None:
             overlay_sedimen = gpd.overlay(gdf, sedimen_gdf[['geometry']], how='intersection')
             if not overlay_sedimen.empty:
-                st.success("Poligon berada di Lokasi Prioritas Sedimentasi 🏖️🏖️")
+                st.success("Poligon berada di Lokasi Prioritas Sedimentasi ✅✅")
             else:
-                st.info("Poligon tidak berada di Lokasi Prioritas Sedimentasi ✅")
+                st.info("Poligon diuar Lokasi Prioritas Sedimentasi ⚠️⚠️")
 
     st.subheader("Hasil Konversi")
     st.dataframe(df[['id', 'longitude', 'latitude']])
