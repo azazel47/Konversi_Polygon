@@ -16,7 +16,7 @@ st.markdown("""
             Silakan kunjungi kembali dalam beberapa saat.
         </p>
         <p style="margin-top: 40px; font-size: 0.9em; color: gray;">
-            Terima kasih atas kesabaran Anda 🙏
+            Silahkan menggunakan situs verdok lainnya 🙏
         </p>
     </div>
 """, unsafe_allow_html=True)
