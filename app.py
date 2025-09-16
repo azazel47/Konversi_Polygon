@@ -173,12 +173,20 @@ if uploaded_file and nama_file:
         ).add_to(m)
 
         # Tambahkan hasil GeoDataFrame
-        folium.GeoJson(
-            gdf,
-            name="Hasil Analisis",
-            tooltip=folium.GeoJsonTooltip(fields=gdf.columns.tolist(), aliases=gdf.columns.tolist())
-        ).add_to(m)
+valid_cols = [c for c in gdf.columns if c != "geometry"]
+if valid_cols:
+    folium.GeoJson(
+        gdf,
+        name="Hasil Analisis",
+        tooltip=folium.GeoJsonTooltip(fields=valid_cols, aliases=valid_cols)
+    ).add_to(m)
+else:
+    folium.GeoJson(
+        gdf,
+        name="Hasil Analisis"
+    ).add_to(m)
 
         folium.LayerControl().add_to(m)
 
         st_map = st_folium(m, width=800, height=500)
+
